@@ -1,7 +1,7 @@
 // ==UserScript==
-// @name         スカウト絞り込み 4媒体共通版 v6.2
+// @name         スカウト絞り込み 4媒体共通版 v6.3
 // @namespace    co-llabo.scout-filter
-// @version      6.2.0
+// @version      6.3.0
 // @updateURL    https://raw.githubusercontent.com/sakaisho1rodesu-sys/korabo-scout-team/main/scout_filter_team.user.js
 // @downloadURL  https://raw.githubusercontent.com/sakaisho1rodesu-sys/korabo-scout-team/main/scout_filter_team.user.js
 // @description  エン転職・エン転職ダイレクト・マイナビ転職・dodaダイレクトを1本のスクリプトでまかなう絞り込みツール。STEP1 条件を入れる → STEP2 絞り込む → STEP3 上から◯件にチェック、の3手だけで使えます。外国籍の要確認判定つき。候補者を選ぶところまでで、送信・登録・一覧からの削除は行いません。開いているサイトを見て、その媒体用の読み取りに自動で切り替わります。
@@ -20,7 +20,7 @@
 (function(){
   "use strict";
   if(window.__SCOUT_FILTER__){ console.warn('[スカウト絞り込み] すでに起動しています'); return; }
-  window.__SCOUT_FILTER__='6.2';
+  window.__SCOUT_FILTER__='6.3';
   /* ===== v6.1：マイナビ専用の付属機能（メール確認画面の余剰除去） =====
      配信の確認画面（ctsn_setMailView_form）では、選んだ人以外のチェックを外して件数を合わせる。
      選んだ人の記録は、一覧側が localStorage（_mn_sel_<chkcd>）へ残したものを使う。 */
@@ -795,7 +795,7 @@
   }
 
   /* ---------- 状態 ---------- */
-  var VER='6.1';   /* build.py が差し込む */
+  var VER='6.3';   /* build.py が差し込む */
   var LAST_KEY='scoutFilterCond_'+ADP.site;
   var LIST=[], VIEW=[], logEl=null, panel=null;
 
@@ -1068,6 +1068,14 @@
   }
   function silentHere(){ return !!(ADP.notList && ADP.notList.test(location.pathname + location.search)); }
   function syncVisible(force){
+    /* v7.1/v6.2 dodaの送信画面（ScoutSendCreate等）は、画面に候補者が1人載っていて「1/1」と判定されるため
+       パネルとボタンが出ていた。notListに当たる画面ではdodaに限り何も出さない。 */
+    if(ADP.site==='doda' && silentHere()){
+      panel.style.display='none'; chip.style.display='none';
+      qsa('.sfFlagTag').forEach(function(x){ x.remove(); });
+      var swS=document.getElementById('sfSideWrap'); if(swS) swS.style.display='none';
+      return;
+    }
     if(blockedHere()){
       panel.style.display='none'; chip.style.display='none';
       qsa('.sfFlagTag').forEach(function(x){ x.remove(); });
