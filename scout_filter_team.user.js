@@ -1,7 +1,7 @@
 // ==UserScript==
-// @name         スカウト絞り込み 4媒体共通版 v6.3
+// @name         スカウト絞り込み 4媒体共通版 v6.4
 // @namespace    co-llabo.scout-filter
-// @version      6.3.0
+// @version      6.4.0
 // @updateURL    https://raw.githubusercontent.com/sakaisho1rodesu-sys/korabo-scout-team/main/scout_filter_team.user.js
 // @downloadURL  https://raw.githubusercontent.com/sakaisho1rodesu-sys/korabo-scout-team/main/scout_filter_team.user.js
 // @description  エン転職・エン転職ダイレクト・マイナビ転職・dodaダイレクトを1本のスクリプトでまかなう絞り込みツール。STEP1 条件を入れる → STEP2 絞り込む → STEP3 上から◯件にチェック、の3手だけで使えます。外国籍の要確認判定つき。候補者を選ぶところまでで、送信・登録・一覧からの削除は行いません。開いているサイトを見て、その媒体用の読み取りに自動で切り替わります。
@@ -20,7 +20,7 @@
 (function(){
   "use strict";
   if(window.__SCOUT_FILTER__){ console.warn('[スカウト絞り込み] すでに起動しています'); return; }
-  window.__SCOUT_FILTER__='6.3';
+  window.__SCOUT_FILTER__='6.4';
   /* ===== v6.1：マイナビ専用の付属機能（メール確認画面の余剰除去） =====
      配信の確認画面（ctsn_setMailView_form）では、選んだ人以外のチェックを外して件数を合わせる。
      選んだ人の記録は、一覧側が localStorage（_mn_sel_<chkcd>）へ残したものを使う。 */
@@ -1083,6 +1083,14 @@
       return;
     }
     if(pausedHere()){
+      /* v6.4：停止中の表示は、候補者の一覧が出ている画面（検索結果）だけに出す。
+         一覧が無い画面（トップ・条件入力・送信画面など）では何も出さない。 */
+      if(!hasList){
+        panel.style.display='none'; chip.style.display='none';
+        qsa('.sfFlagTag').forEach(function(x){ x.remove(); });
+        var swP=document.getElementById('sfSideWrap'); if(swP) swP.style.display='none';
+        return;
+      }
       panel.style.display='none';
       chipLab.textContent=(preName()?preName()+'　':'')+'絞り込み停止中（クリックで再開）';
       setTabTitle((preName()?preName()+' ':'')+'解除中');
@@ -1629,7 +1637,7 @@
   }
   function tick(){
     if(blockedHere()){ hasList=false; syncVisible(false); applied=false; lastN=-1; return; }
-    if(pausedHere()){ releaseAll(); syncVisible(false); applied=false; lastN=-1; return; }
+    if(pausedHere()){ try{ hasList=(ADP.rows().length>0); }catch(e){ hasList=false; } releaseAll(); syncVisible(false); applied=false; lastN=-1; return; }
     var rows=[];
     try{ rows=ADP.rows(); }catch(e){}
     var n=rows.length;
