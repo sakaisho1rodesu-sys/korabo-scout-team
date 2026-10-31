@@ -1,7 +1,7 @@
 // ==UserScript==
-// @name         スカウト絞り込み 4媒体共通版 v6.4
+// @name         スカウト絞り込み 4媒体共通版 v6.5
 // @namespace    co-llabo.scout-filter
-// @version      6.4.0
+// @version      6.5.0
 // @updateURL    https://raw.githubusercontent.com/sakaisho1rodesu-sys/korabo-scout-team/main/scout_filter_team.user.js
 // @downloadURL  https://raw.githubusercontent.com/sakaisho1rodesu-sys/korabo-scout-team/main/scout_filter_team.user.js
 // @description  エン転職・エン転職ダイレクト・マイナビ転職・dodaダイレクトを1本のスクリプトでまかなう絞り込みツール。STEP1 条件を入れる → STEP2 絞り込む → STEP3 上から◯件にチェック、の3手だけで使えます。外国籍の要確認判定つき。候補者を選ぶところまでで、送信・登録・一覧からの削除は行いません。開いているサイトを見て、その媒体用の読み取りに自動で切り替わります。
@@ -20,7 +20,7 @@
 (function(){
   "use strict";
   if(window.__SCOUT_FILTER__){ console.warn('[スカウト絞り込み] すでに起動しています'); return; }
-  window.__SCOUT_FILTER__='6.4';
+  window.__SCOUT_FILTER__='6.5';
   /* ===== v6.1：マイナビ専用の付属機能（メール確認画面の余剰除去） =====
      配信の確認画面（ctsn_setMailView_form）では、選んだ人以外のチェックを外して件数を合わせる。
      選んだ人の記録は、一覧側が localStorage（_mn_sel_<chkcd>）へ残したものを使う。 */
@@ -670,6 +670,8 @@
     wideReason:'dodaダイレクトは検索条件に年齢・受信数の指定が無いため、ページごとの絞り込みになります',
     /* 一覧が無いと分かっている画面。ここではパネルもボタンも出さない */
     notList:/ScoutSendCreate|ScoutSend|SendComplete|MailCreate|Preview/i,
+    /* v6.5：応募者管理は一覧を扱わない画面。何も出さない */
+    blocked:/ApplicantManagement/i,
 
     prescan:function(){
       var cs=ddCards();
@@ -1104,7 +1106,11 @@
     var sw2=document.getElementById('sfSideWrap'); if(sw2) sw2.style.display='block';
     if(!hasList && !force){
       panel.style.display='none';
-      chip.style.display=silentHere()?'none':'flex';
+      /* v6.5：dodaダイレクト／エン転職ダイレクトは、候補者一覧が出ている画面（検索結果）だけで表示する。
+         トップ・応募管理など一覧が無い画面では、ボタンもサイドの枠も出さない。 */
+      var onlyList=(ADP.site==='doda'||ADP.site==='endirect');
+      chip.style.display=(silentHere()||onlyList)?'none':'flex';
+      if(onlyList && sw2) sw2.style.display='none';
       return;
     }
     var open=wantOpen();
