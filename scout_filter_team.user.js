@@ -1,7 +1,7 @@
 // ==UserScript==
-// @name         スカウト絞り込み 4媒体共通版 v6.5
+// @name         スカウト絞り込み 4媒体共通版 v6.6
 // @namespace    co-llabo.scout-filter
-// @version      6.5.0
+// @version      6.6.0
 // @updateURL    https://raw.githubusercontent.com/sakaisho1rodesu-sys/korabo-scout-team/main/scout_filter_team.user.js
 // @downloadURL  https://raw.githubusercontent.com/sakaisho1rodesu-sys/korabo-scout-team/main/scout_filter_team.user.js
 // @description  エン転職・エン転職ダイレクト・マイナビ転職・dodaダイレクトを1本のスクリプトでまかなう絞り込みツール。STEP1 条件を入れる → STEP2 絞り込む → STEP3 上から◯件にチェック、の3手だけで使えます。外国籍の要確認判定つき。候補者を選ぶところまでで、送信・登録・一覧からの削除は行いません。開いているサイトを見て、その媒体用の読み取りに自動で切り替わります。
@@ -20,7 +20,7 @@
 (function(){
   "use strict";
   if(window.__SCOUT_FILTER__){ console.warn('[スカウト絞り込み] すでに起動しています'); return; }
-  window.__SCOUT_FILTER__='6.5';
+  window.__SCOUT_FILTER__='6.6';
   /* ===== v6.1：マイナビ専用の付属機能（メール確認画面の余剰除去） =====
      配信の確認画面（ctsn_setMailView_form）では、選んだ人以外のチェックを外して件数を合わせる。
      選んだ人の記録は、一覧側が localStorage（_mn_sel_<chkcd>）へ残したものを使う。 */
@@ -664,6 +664,7 @@
     color:'#0b8a5b',
     abort:false,
     hasScout:true,
+    hasSalary:true,
     hasGaku:false,
     note:'',
     col5:{ head:'受信', get:function(r){ return {text:(r.scout>=0? r.scout+'通' : '-'), color:(r.scout>=0 && r.scout<=5)?'#27ae60':'#555'}; } },
@@ -707,6 +708,9 @@
       if(g) sex=g[1];
       else if(/(?:^|[^活躍歓迎募集多])女性/.test(t)) sex='女性';
       else if(/(?:^|[^活躍歓迎募集多])男性/.test(t)) sex='男性';
+      /* 一覧の「岐阜県／400万円／在職中／…」の金額が現年収。在職状況の直前を優先する */
+      var sal=-1, sm=t.match(/(\d{2,4})\s*万円\s*[／\/]\s*(?:在職中|離職中|在学中)/) || t.match(/[／\/]\s*(\d{2,4})\s*万円\s*[／\/]/);
+      if(sm) sal=parseInt(sm[1],10);
       var sc=t.match(/スカウト受信数\s*(\d+)\s*通/) || t.match(/受信数\s*(\d+)\s*通/) || t.match(/受信\s*(\d+)\s*通/);
       function gg(re){ var x=t.match(re); return x?String(x[1]).trim():''; }
       return {
@@ -718,6 +722,7 @@
         gaku:gg(/最終学歴\s*[:：]?\s*([^\s]{0,26})/),
         lang:gg(/その他言語\s*[:：]?\s*([^\s]{0,20})/),
         scout:sc?parseInt(sc[1],10):-1,
+        sal:sal,
         text:t
       };
     },
@@ -797,7 +802,7 @@
   }
 
   /* ---------- 状態 ---------- */
-  var VER='6.3';   /* build.py が差し込む */
+  var VER='6.6';   /* build.py が差し込む */
   var LAST_KEY='scoutFilterCond_'+ADP.site;
   var LIST=[], VIEW=[], logEl=null, panel=null;
 
@@ -867,7 +872,7 @@
     LIST.forEach(function(r){
       if(!r.el) return;
       if(!r.flag){ if(r._marked){ r.el.style.boxShadow=''; r._marked=false; } return; }
-      var tag=el('span','display:inline-block;background:#e8500e;color:#fff;font-size:11px;font-weight:bold;line-height:1.6;padding:1px 9px;border-radius:3px;margin:4px 8px 4px 0;font-family:sans-serif;vertical-align:middle','要確認: '+r.hint);
+      var tag=el('span','display:inline-block;background:#e8500e;color:#fff;font-size:11px;font-weight:bold;line-height:1.6;padding:1px 9px;border-radius:3px;margin:4px 8px 4px 0;font-family:sans-serif;vertical-align:middle','要確認: '+(r.flagTxt||r.hint));
       tag.className='sfFlagTag';
       try{ r.el.insertBefore(tag, r.el.firstChild); }catch(e){ return; }
       r.el.style.boxShadow='inset 4px 0 0 #e8500e';
@@ -912,6 +917,7 @@
     + '<b>性別</b><select id="sfSex" style="padding:2px;width:68px;font-size:11px"><option>指定なし</option><option>男性</option><option>女性</option></select>'
     + '<b style="margin-left:4px">年齢</b><input type="number" id="sfLo" value="20" style="width:40px;padding:2px;font-size:11px">〜<input type="number" id="sfHi" value="29" style="width:40px;padding:2px;font-size:11px">歳'
     + '<span id="sfScoutWrap"'+(ADP.hasScout?'':' style="display:none"')+'><b style="margin-left:4px">受信</b><input type="number" id="sfScout" value="" placeholder="―" style="width:44px;padding:2px;font-size:11px">通以下</span>'
+    + '<span id="sfSalWrap"'+(ADP.hasSalary?'':' style="display:none"')+'><b style="margin-left:4px">年収</b><input type="number" id="sfSal" value="" placeholder="―" step="10" min="0" style="width:52px;padding:2px;font-size:11px">万円以下<select id="sfSalStep" title="矢印キーで増減する幅" style="padding:1px;font-size:11px;margin-left:2px"><option value="10">10刻み</option><option value="50">50刻み</option></select></span>'
     + '</div>'
     + '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:6px">'
     + '<span style="font-size:11px">除外ワード</span><input type="text" id="sfNg" placeholder="卒業見込み 在学中" style="flex:1;min-width:120px;padding:3px">'
@@ -966,12 +972,17 @@
   document.body.appendChild(panel);
   logEl=panel.querySelector('#sfLog');
   /* v4.4：年齢・性別・受信数・除外ワードは、変えた時点で保存する（絞り込みを押さずに閉じても残る） */
-  ['#sfSex','#sfLo','#sfHi','#sfScout','#sfNg','#sfFor'].forEach(function(id){
+  ['#sfSex','#sfLo','#sfHi','#sfScout','#sfSal','#sfSalStep','#sfNg','#sfFor'].forEach(function(id){
     var e=panel.querySelector(id); if(!e) return;
     e.addEventListener('change', function(){ try{ saveLast(); }catch(x){} });
     e.addEventListener('input', function(){ try{ saveLast(); }catch(x){} });
   });
   function q(id){ return panel.querySelector(id); }
+  (function(){
+    var st=q('#sfSalStep'), sl=q('#sfSal'); if(!st||!sl) return;
+    function ap(){ sl.step=st.value; }
+    st.addEventListener('change', ap); ap();
+  })();
 
   /* 候補者の一覧が無い画面（スカウト送信画面やポップアップなど）ではパネルを出さない。
      代わりに小さなボタンだけ置き、一覧が出てきたら自動でパネルに切り替える。
@@ -1144,8 +1155,11 @@
     var lo=parseInt(q('#sfLo').value,10); if(isNaN(lo)) lo=0;
     var hi=parseInt(q('#sfHi').value,10); if(isNaN(hi)) hi=99;
     var sc=parseInt(q('#sfScout').value,10);
+    var sal=ADP.hasSalary?parseInt(q('#sfSal').value,10):NaN;
     return {sex:q('#sfSex').value, lo:lo, hi:hi,
             scoutMax:(isNaN(sc)?-1:sc),
+            salMax:(isNaN(sal)?-1:sal),
+            salStep:(q('#sfSalStep')?q('#sfSalStep').value:'10'),
             ng:words(q('#sfNg').value),
             useFor:q('#sfFor').checked,
             pre:(q('#sfPre')?q('#sfPre').value:'')};
@@ -1198,6 +1212,8 @@
     if(c.lo!=null) q('#sfLo').value=c.lo;
     if(c.hi!=null) q('#sfHi').value=c.hi;
     q('#sfScout').value=(c.scoutMax!=null && c.scoutMax>=0)?c.scoutMax:'';
+    q('#sfSal').value=(c.salMax!=null && c.salMax>=0)?c.salMax:'';
+    if(c.salStep){ q('#sfSalStep').value=c.salStep; q('#sfSal').step=c.salStep; }
     q('#sfNg').value=(c.ng&&c.ng.length)?c.ng.join(' '):'';
     q('#sfFor').checked=(c.useFor!==false);
   }
@@ -1232,7 +1248,8 @@
     e.style.display='block';
     var c=cond();
     var head='条件：性別 '+(c.sex||'指定なし')+' ／ 年齢 '+c.lo+'〜'+c.hi+'歳'
-           +((ADP.hasScout && c.scoutMax>=0)?(' ／ 受信 '+c.scoutMax+'通以下'):'');
+           +((ADP.hasScout && c.scoutMax>=0)?(' ／ 受信 '+c.scoutMax+'通以下'):'')
+           +((ADP.hasSalary && c.salMax>=0)?(' ／ 年収 '+c.salMax+'万円以下'):'');
     e.textContent=head+'　｜　'+t.join('　→　');
     /* 性別を指定していないときは色を変えて気づけるようにする。
        ページを移動したあとに条件が消えていた場合の見落とし防止。 */
@@ -1247,16 +1264,21 @@
   function render(){
     var c=cond(), body=q('#sfList');
     if(!LIST.length){ body.innerHTML='<div style="padding:16px;color:#999;text-align:center;font-size:11px">この画面に候補者の一覧が見つかりませんでした</div>'; return; }
-    var cutAge=0, cutSex=0, cutScout=0, cutNg=0;
+    var cutAge=0, cutSex=0, cutScout=0, cutNg=0, cutSal=0;
     VIEW=LIST.filter(function(r){
       if(c.sex!=='指定なし' && r.sex && r.sex!==c.sex){ cutSex++; return false; }
       if(r.age!=null && r.age>=0 && (r.age<c.lo || r.age>c.hi)){ cutAge++; return false; }
       if(c.scoutMax>=0 && r.scout!=null && r.scout>=0 && r.scout>c.scoutMax){ cutScout++; return false; }
+      if(ADP.hasSalary && c.salMax>=0 && r.sal!=null && r.sal>=0 && r.sal>c.salMax){ cutSal++; return false; }
       if(c.ng.length && c.ng.some(function(k){ return (r.text||'').indexOf(k)>-1; })){ cutNg++; return false; }
       return true;
     });
     LIST.forEach(function(r){ r.flag=false; });
-    VIEW.forEach(function(r){ r.flag=(c.useFor && !!r.hint); });
+    VIEW.forEach(function(r){
+      var sh=(ADP.hasSalary && c.salMax>=0 && (r.sal==null || r.sal<0))?'年収の記載なし':'';
+      var fh=(c.useFor && r.hint)?r.hint:'';
+      r.flag=!!(fh||sh); r.flagTxt=fh||sh;
+    });
 
     /* 画面側も条件外を隠す。隠す行にチェックが付いていたら外す */
     VIEW.forEach(function(r){ r._in=1; });
@@ -1279,7 +1301,7 @@
         +'<span style="text-align:center">'+((r.age==null||r.age<0)?'-':r.age)+'</span>'
         +'<span style="text-align:center">'+(r.sex||'-')+'</span>'
         +'<span style="text-align:center;color:'+(c5.color||'#555')+'">'+(c5.text||'-')+'</span>'
-        +'<span>'+(r.flag?'<span class="sfJump" data-i="'+i+'" title="クリックでこの人の位置へスクロール" style="padding:1px 6px;border-radius:3px;background:#e8500e;color:#fff;font-size:9px;cursor:pointer">要確認: '+r.hint+' ▶</span>':'<span style="color:#bbb;font-size:10px">—</span>')+'</span>'
+        +'<span>'+(r.flag?'<span class="sfJump" data-i="'+i+'" title="クリックでこの人の位置へスクロール" style="padding:1px 6px;border-radius:3px;background:#e8500e;color:#fff;font-size:9px;cursor:pointer">要確認: '+(r.flagTxt||r.hint)+' ▶</span>':'<span style="color:#bbb;font-size:10px">—</span>')+'</span>'
         +'</div>';
     }).join('') || '<div style="padding:16px;color:#999;text-align:center;font-size:11px">条件に合う人がいません</div>';
 
@@ -1333,6 +1355,7 @@
     if(cutSex) msg.push('性別で除外 '+cutSex+'名');
     if(cutAge) msg.push('年齢で除外 '+cutAge+'名');
     if(cutScout) msg.push('受信数で除外 '+cutScout+'名');
+    if(cutSal) msg.push('年収で除外 '+cutSal+'名');
     if(c.scoutMax>=0 && !LIST.some(function(r){ return r.scout!=null && r.scout>=0; }))
       msg.push('※この画面にはスカウト受信数の記載が無いため、受信数の条件は効いていません');
     if(cutNg) msg.push('除外ワードで除外 '+cutNg+'名');
@@ -1415,7 +1438,7 @@
     log('この画面のチェックをすべて外しました（画面のチェック '+pageChecked()+'名）');
   };
 
-  ['#sfLo','#sfHi','#sfNg','#sfTopN','#sfScout'].forEach(function(sel){
+  ['#sfLo','#sfHi','#sfNg','#sfTopN','#sfScout','#sfSal'].forEach(function(sel){
     var e=q(sel); if(!e) return;
     e.onkeydown=function(ev){ if(ev.key==='Enter'){ ev.preventDefault(); LIST.length?render():doRun(); } };
   });
