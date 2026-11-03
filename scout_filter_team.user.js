@@ -1,7 +1,7 @@
 // ==UserScript==
-// @name         スカウト絞り込み 4媒体共通版 v6.6
+// @name         スカウト絞り込み 4媒体共通版 v6.7
 // @namespace    co-llabo.scout-filter
-// @version      6.6.0
+// @version      6.7.0
 // @updateURL    https://raw.githubusercontent.com/sakaisho1rodesu-sys/korabo-scout-team/main/scout_filter_team.user.js
 // @downloadURL  https://raw.githubusercontent.com/sakaisho1rodesu-sys/korabo-scout-team/main/scout_filter_team.user.js
 // @description  エン転職・エン転職ダイレクト・マイナビ転職・dodaダイレクトを1本のスクリプトでまかなう絞り込みツール。STEP1 条件を入れる → STEP2 絞り込む → STEP3 上から◯件にチェック、の3手だけで使えます。外国籍の要確認判定つき。候補者を選ぶところまでで、送信・登録・一覧からの削除は行いません。開いているサイトを見て、その媒体用の読み取りに自動で切り替わります。
@@ -20,7 +20,7 @@
 (function(){
   "use strict";
   if(window.__SCOUT_FILTER__){ console.warn('[スカウト絞り込み] すでに起動しています'); return; }
-  window.__SCOUT_FILTER__='6.6';
+  window.__SCOUT_FILTER__='6.7';
   /* ===== v6.1：マイナビ専用の付属機能（メール確認画面の余剰除去） =====
      配信の確認画面（ctsn_setMailView_form）では、選んだ人以外のチェックを外して件数を合わせる。
      選んだ人の記録は、一覧側が localStorage（_mn_sel_<chkcd>）へ残したものを使う。 */
@@ -802,7 +802,7 @@
   }
 
   /* ---------- 状態 ---------- */
-  var VER='6.6';   /* build.py が差し込む */
+  var VER='6.7';   /* build.py が差し込む */
   var LAST_KEY='scoutFilterCond_'+ADP.site;
   var LIST=[], VIEW=[], logEl=null, panel=null;
 
@@ -913,7 +913,7 @@
     + '<div style="padding:9px;background:#f7f9fb;border:1px solid #dde5ec;border-radius:5px">'
     + '<div style="font-size:11px;font-weight:bold;color:#55606b;margin-bottom:6px">STEP1　条件を入れる<span id="sfPreNow" style="margin-left:8px;padding:2px 10px;border-radius:3px;background:#e3eefa;color:#0b6cbf;font-size:14px;display:none"></span></div>'
     /* 4媒体とも同じ並び。1行に収まるよう幅を詰めてある */
-    + '<div style="display:flex;gap:5px;align-items:center;white-space:nowrap;font-size:11px">'
+    + '<div style="display:flex;flex-wrap:wrap;gap:4px 5px;align-items:center;white-space:nowrap;font-size:11px">'
     + '<b>性別</b><select id="sfSex" style="padding:2px;width:68px;font-size:11px"><option>指定なし</option><option>男性</option><option>女性</option></select>'
     + '<b style="margin-left:4px">年齢</b><input type="number" id="sfLo" value="20" style="width:40px;padding:2px;font-size:11px">〜<input type="number" id="sfHi" value="29" style="width:40px;padding:2px;font-size:11px">歳'
     + '<span id="sfScoutWrap"'+(ADP.hasScout?'':' style="display:none"')+'><b style="margin-left:4px">受信</b><input type="number" id="sfScout" value="" placeholder="―" style="width:44px;padding:2px;font-size:11px">通以下</span>'
