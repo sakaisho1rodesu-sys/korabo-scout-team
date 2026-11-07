@@ -1,7 +1,7 @@
 // ==UserScript==
-// @name         スカウト絞り込み 4媒体共通版 v6.7
+// @name         スカウト絞り込み 4媒体共通版 v6.8
 // @namespace    co-llabo.scout-filter
-// @version      6.7.0
+// @version      6.8.0
 // @updateURL    https://raw.githubusercontent.com/sakaisho1rodesu-sys/korabo-scout-team/main/scout_filter_team.user.js
 // @downloadURL  https://raw.githubusercontent.com/sakaisho1rodesu-sys/korabo-scout-team/main/scout_filter_team.user.js
 // @description  エン転職・エン転職ダイレクト・マイナビ転職・dodaダイレクトを1本のスクリプトでまかなう絞り込みツール。STEP1 条件を入れる → STEP2 絞り込む → STEP3 上から◯件にチェック、の3手だけで使えます。外国籍の要確認判定つき。候補者を選ぶところまでで、送信・登録・一覧からの削除は行いません。開いているサイトを見て、その媒体用の読み取りに自動で切り替わります。
@@ -1474,9 +1474,28 @@
     if(LIST.length) render(); else doRun();
     log('プリセット「'+dispName(name)+'」を読み込みました');
   };
+  /* 社名欄：ページ側のフォーカス制御・キー入力の横取りに負けないようにする */
+  (function(){
+    var inp=q('#sfPreName'); if(!inp) return;
+    try{ inp.setAttribute('autocomplete','off'); inp.removeAttribute('disabled'); inp.removeAttribute('readonly'); }catch(e){}
+    function keep(ev){ if(ev.target===inp) ev.stopImmediatePropagation(); }
+    ['focusin','focusout','focus','blur','keydown','keypress','keyup','beforeinput','input','paste','compositionstart','compositionupdate','compositionend'].forEach(function(t){
+      window.addEventListener(t, keep, true);
+    });
+    inp.addEventListener('mousedown', function(ev){
+      ev.stopPropagation();
+      setTimeout(function(){ if(document.activeElement!==inp){ try{ inp.focus(); }catch(e){} } }, 0);
+    });
+    inp.addEventListener('click', function(ev){ ev.stopPropagation(); });
+  })();
   q('#sfPreSave').onclick=function(){
     var name=(q('#sfPreName').value||'').trim();
-    if(!name){ log('保存する名前を入れてください（社名など）','#c0392b'); q('#sfPreName').focus(); return; }
+    /* 社名欄に入力できないとき（ページ側の入力制限など）は、入力ダイアログで名前を受け取る */
+    if(!name){
+      try{ name=(window.prompt('保存する名前（社名など）を入力してください。同じ名前は上書きします', '')||'').trim(); }catch(e){ name=''; }
+      if(!name){ log('保存する名前を入れてください（社名など）','#c0392b'); return; }
+      q('#sfPreName').value=maskOn()?'':name;
+    }
     var o=loadPresets();
     var exists=!!o[name];
     if(exists && !confirm('「'+name+'」はすでにあります。いまの条件で上書きしますか？')) return;
