@@ -1,7 +1,7 @@
 // ==UserScript==
-// @name         スカウト絞り込み 4媒体共通版 v6.8
+// @name         スカウト絞り込み 4媒体共通版 v6.9
 // @namespace    co-llabo.scout-filter
-// @version      6.8.0
+// @version      6.9.0
 // @updateURL    https://raw.githubusercontent.com/sakaisho1rodesu-sys/korabo-scout-team/main/scout_filter_team.user.js
 // @downloadURL  https://raw.githubusercontent.com/sakaisho1rodesu-sys/korabo-scout-team/main/scout_filter_team.user.js
 // @description  エン転職・エン転職ダイレクト・マイナビ転職・dodaダイレクトを1本のスクリプトでまかなう絞り込みツール。STEP1 条件を入れる → STEP2 絞り込む → STEP3 上から◯件にチェック、の3手だけで使えます。外国籍の要確認判定つき。候補者を選ぶところまでで、送信・登録・一覧からの削除は行いません。開いているサイトを見て、その媒体用の読み取りに自動で切り替わります。
@@ -20,7 +20,7 @@
 (function(){
   "use strict";
   if(window.__SCOUT_FILTER__){ console.warn('[スカウト絞り込み] すでに起動しています'); return; }
-  window.__SCOUT_FILTER__='6.7';
+  window.__SCOUT_FILTER__='6.9';
   /* ===== v6.1：マイナビ専用の付属機能（メール確認画面の余剰除去） =====
      配信の確認画面（ctsn_setMailView_form）では、選んだ人以外のチェックを外して件数を合わせる。
      選んだ人の記録は、一覧側が localStorage（_mn_sel_<chkcd>）へ残したものを使う。 */
@@ -802,8 +802,31 @@
   }
 
   /* ---------- 状態 ---------- */
-  var VER='6.7';   /* build.py が差し込む */
+  var VER='6.9';   /* build.py が差し込む */
   var LAST_KEY='scoutFilterCond_'+ADP.site;
+  /* v6.9: エン転職では、前回の条件を会社ごとに分けて覚える（別の会社へログインし直したとき、前の会社の性別・年齢・プリセットを引きずらない）。
+     社名は画面の「〇〇 管理者：」から読む。読めないとき・他の媒体では従来どおり媒体ごとに1つ。 */
+  var _compKey='';
+  function normComp(v){
+    return String(v||'').replace(/[（(][^）)]*[)）]/g,'').replace(/株式会社|有限会社|合同会社|合資会社|㈱|㈲/g,'').replace(/[\s　・,、.。\-−ー_\/|]/g,'').toLowerCase();
+  }
+  function compKey(){
+    if(ADP.site!=='en') return '';
+    if(!_compKey){
+      try{
+        var t=((document.body.innerText||document.body.textContent||'')+'').replace(/\s+/g,' ');
+        var m=t.match(/([^\s]{2,30}?)\s*管理者\s*[：:]/);
+        _compKey=m?normComp(m[1]):'';
+      }catch(e){ _compKey=''; }
+    }
+    return _compKey;
+  }
+  function lastKey(){ var c=compKey(); return c?(LAST_KEY+'@'+c):LAST_KEY; }
+  function presetForCompany(){
+    var c=compKey(); if(!c) return '';
+    var o=loadPresets();
+    return Object.keys(o).sort().filter(function(n){ var b=normComp(n); return b.length>=2 && (c.indexOf(b)>-1 || b.indexOf(c)>-1); })[0]||'';
+  }
   var LIST=[], VIEW=[], logEl=null, panel=null;
 
   function scan(){
@@ -1195,11 +1218,11 @@
   setInterval(function(){ if(_lastTitle && document.title!==_lastTitle) document.title=_lastTitle; }, 3000);
   function saveLast(){
     var c=cond(); c.ts=Date.now();
-    try{ localStorage.setItem(LAST_KEY, JSON.stringify(c)); }catch(e){}
+    try{ localStorage.setItem(lastKey(), JSON.stringify(c)); }catch(e){}
   }
   function loadLast(){
     try{
-      var c=JSON.parse(localStorage.getItem(LAST_KEY)||'null');
+      var c=JSON.parse(localStorage.getItem(lastKey())||'null');
       /* v4.4：年齢などの条件は期限なしで覚える。閉じて開き直しても前回の設定から始まる */
       if(!c) return null;
       return c;
@@ -1653,7 +1676,15 @@
      エン転職はこれに加えて検索条件そのものが書き換わっているので二重に効く。 */
   function autoApply(quiet){
     var c=loadLast();
-    if(!c){ doRun(); return; }
+    if(!c){
+      /* v6.9: この会社で初めて開いたときは、社名に合うプリセットを自動で選ぶ */
+      var nm0=''; try{ nm0=presetForCompany(); }catch(e){}
+      if(nm0){
+        setCond(loadPresets()[nm0]); drawPresets(nm0); q('#sfPreName').value=maskOn()?'':nm0;
+        if(!quiet) log('社名に合わせてプリセット「'+dispName(nm0)+'」を選びました');
+      }
+      doRun(); return;
+    }
     setCond(c);
     /* v4.3：ページを移動しても、どのプリセット（社名）で絞っているかを残す */
     if(c.pre && loadPresets()[c.pre]){ drawPresets(c.pre); q('#sfPreName').value=maskOn()?'':c.pre; }
