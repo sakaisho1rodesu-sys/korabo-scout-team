@@ -1,7 +1,7 @@
 // ==UserScript==
-// @name         スカウト絞り込み 4媒体共通版 v7.1
+// @name         スカウト絞り込み 4媒体共通版 v7.2
 // @namespace    co-llabo.scout-filter
-// @version      7.1.0
+// @version      7.2.0
 // @updateURL    https://raw.githubusercontent.com/sakaisho1rodesu-sys/korabo-scout-team/main/scout_filter_team.user.js
 // @downloadURL  https://raw.githubusercontent.com/sakaisho1rodesu-sys/korabo-scout-team/main/scout_filter_team.user.js
 // @description  エン転職・エン転職ダイレクト・マイナビ転職・dodaダイレクトを1本のスクリプトでまかなう絞り込みツール。STEP1 条件を入れる → STEP2 絞り込む → STEP3 上から◯件にチェック、の3手だけで使えます。外国籍の要確認判定つき。候補者を選ぶところまでで、送信・登録・一覧からの削除は行いません。開いているサイトを見て、その媒体用の読み取りに自動で切り替わります。
@@ -21,7 +21,7 @@
 (function(){
   "use strict";
   if(window.__SCOUT_FILTER__){ console.warn('[スカウト絞り込み] すでに起動しています'); return; }
-  window.__SCOUT_FILTER__='7.1';
+  window.__SCOUT_FILTER__='7.2';
   /* ===== v6.1：マイナビ専用の付属機能（メール確認画面の余剰除去） =====
      配信の確認画面（ctsn_setMailView_form）では、選んだ人以外のチェックを外して件数を合わせる。
      選んだ人の記録は、一覧側が localStorage（_mn_sel_<chkcd>）へ残したものを使う。 */
@@ -99,7 +99,7 @@
   /* 年収の読み取り（エン転職・マイナビ共通）。範囲表記（400〜449万円）は下限を採る。読めなければ -1 */
   function salOfText(t){
     t=String(t||'').replace(/\s+/g,' ');
-    var m=t.match(/(?:現在の|直近の|現)?年収\s*[:：]?\s*(\d{2,4})\s*(?:万円)?\s*(?:[～〜~\-－]\s*\d{2,4}\s*)?万円/)
+    var m=t.match(/(?<!希望)(?:現在の|直近の|現)?年収\s*[:：]?\s*(\d{2,4})\s*(?:万円)?\s*(?:[～〜~\-－]\s*\d{2,4}\s*)?万円/)
         ||t.match(/(\d{2,4})\s*万円\s*[\/／]?\s*(?:在職中|離職中|在学中)/);
     return m?parseInt(m[1],10):-1;
   }
@@ -234,7 +234,7 @@
         gaku:b.gaku||(m?String(m[4]).replace(/年収[\s\S]*$/,'').trim():''),
         lang:b.lang||'',
         scout:-1,
-        sal:salOfText((b.raw||'')+' '+t),
+        sal:salOfText(t),   /* 一覧の行に出ている現年収だけを見る（詳細の希望年収は拾わない） */
         text:((b.raw||'')+' '+t)
       };
     },
@@ -814,7 +814,7 @@
   }
 
   /* ---------- 状態 ---------- */
-  var VER='7.1';   /* build.py が差し込む */
+  var VER='7.2';   /* build.py が差し込む */
   var LAST_KEY='scoutFilterCond_'+ADP.site;
   /* v6.9: エン転職では、前回の条件を会社ごとに分けて覚える（別の会社へログインし直したとき、前の会社の性別・年齢・プリセットを引きずらない）。
      社名は画面の「〇〇 管理者：」から読む。読めないとき・他の媒体では従来どおり媒体ごとに1つ。 */
